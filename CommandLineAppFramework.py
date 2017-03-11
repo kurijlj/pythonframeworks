@@ -36,13 +36,16 @@ import argparse
 # Utility classes and functions
 #==============================================================================
 
-class ProgramAction:
+class ProgramAction(object):
 	"""Abstract base class for all program actions, that provides execute.
 
 	The execute method contains code that will actually be executed after
 	arguments parsing is finished. The method is called from within method
 	run of the CommandLineApp instance.
 	"""
+
+	def __init__(self, exitf):
+		self._exit_app = efitf
 
 	def execute(self):
 		pass
@@ -87,7 +90,18 @@ def _format_epilog(epilogAddition, bugMail):
 	return fmtEpilog
 
 
-class CommandLineApp:
+def _formulate_action(Action, **kwargs):
+	"""Factory method to create and return proper action object.
+	"""
+
+	return Action(**kwargs)
+
+
+#==============================================================================
+# Command line app class
+#==============================================================================
+
+class CommandLineApp(object):
 	"""Actual command line app object containing all relevant application
 	information (NAME, VERSION, DESCRIPTION, ...) and which instantiates
 	action that will be executed depending on the user input from
@@ -127,6 +141,7 @@ class CommandLineApp:
 		self._argumentGroups = []
 
 
+	@property
 	def programName(self):
 		"""Utility function that makes accessing program name attribute
 		neat and hides implementation details.
@@ -134,6 +149,7 @@ class CommandLineApp:
 		return self._parser.prog
 
 
+	@property
 	def programDescription(self):
 		"""Utility function that makes accessing program description
 		attribute neat and hides implementation details.
@@ -202,39 +218,52 @@ class CommandLineApp:
 		arguments = self._parser.parse_args(args, namespace)
 
 		if arguments.usage:
-			self._action = ProgramUsageAction(self._parser)
+			self._action = _formulate_action(
+				ProgramUsageAction,
+				parser=self._parser,
+				exitf=self._parser.exit)
 
 		elif arguments.version:
-			self._action = ShowVersionAction(
-				self.programName(),
-				self.versionString,
-				self.yearString,
-				self.authorName,
-				self.programLicense)
+			self._action = _formulate_action(
+				ShowVersionAction,
+				prog=self._parser.prog,
+				ver=self.versionString,
+				year=self.yearString,
+				author=self.authorName,
+				license=self.programLicense,
+				exitf=self._parser.exit)
 
 		else:
-			self._action = DefaultAction(self.programName())
+			self._action = _formulate_action(
+				DefaultAction,
+				prog=self._parser.prog,
+				exitf=self._parser.exit)
 
 
 	def run(self):
-		"""This method executes action code and terminates application.
+		"""This method executes action code.
 		"""
 
 		self._action.execute()
-		self._parser.exit()
 
+
+#==============================================================================
+# App action classes
+#==============================================================================
 
 class ProgramUsageAction(ProgramAction):
 	"""Program action that formats and displays usage message to the stdout.
 	"""
 	
-	def __init__(self, parser):
+	def __init__(self, parser, exitf):
 		self._usageMessage = \
 		'{usage}Try \'{prog} --help\' for more information.'\
 		.format(usage=parser.format_usage(), prog=parser.prog)
+		self._exit_app = exitf
 	
 	def execute(self):
 		print self._usageMessage
+		self._exit_app()
 	
 	
 class ShowVersionAction(ProgramAction):
@@ -242,13 +271,15 @@ class ShowVersionAction(ProgramAction):
 	to the stdout.
 	"""
 	
-	def __init__(self, prog, ver, year, author, license):
+	def __init__(self, prog, ver, year, author, license, exitf):
 		self._versionMessage = \
 		'{0} {1} Copyright (C) {2} {3}\n{4}'\
 		.format(prog, ver, year, author, license)
+		self._exit_app = exitf
 	
 	def execute(self):
 		print self._versionMessage
+		self._exit_app()
 	
 	
 class DefaultAction(ProgramAction):
@@ -257,12 +288,18 @@ class DefaultAction(ProgramAction):
 	to the stdout.
 	"""
 
-	def __init__(self, prog):
+	def __init__(self, prog, exitf):
 		self._programName = prog
+		self._exit_app = exitf
 
 	def execute(self):
 		print '{0}: Hello World!\n'.format(self._programName)
+		self._exit_app()
 
+
+#==============================================================================
+# Script main body
+#==============================================================================
 
 if __name__ == '__main__':
 	program = CommandLineApp(
