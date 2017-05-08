@@ -69,6 +69,9 @@ if __name__ == '__main__':
 		help='user to logout'
 	)
 
+	print type(subparsers).__name__
+	if isinstance(subparsers, ap._SubParsersAction):
+		print "TRUE"
 	args = parser.parse_args()
 	args.func(args)
 	parser.exit()

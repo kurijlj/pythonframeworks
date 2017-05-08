@@ -29,8 +29,7 @@
 #==============================================================================
 
 
-import argparse as _argparse
-import types as _types
+import argparse
 
 
 #==============================================================================
@@ -83,15 +82,6 @@ def _formulate_action(Action, **kwargs):
 	return Action(**kwargs)
 
 
-def _attach_action_factory(target, method):
-	"""
-	def action_factory(obj, args):
-		return ActionObject
-	"""
-
-	target.method = _types.MethodType(method, target)
-
-
 #==============================================================================
 # Program classes
 #==============================================================================
@@ -110,167 +100,26 @@ class _Program(object):
 	"""
 
 	def __init__(self):
-		self._parser.set_defaults(func=self.formulate_action)
-		self._argumentGroups = list()
-
-
-	def _group_by_title(self, title):
-		"""
-		"""
-
-		group = None
-
-		for item in p._argumentGroups:
-			if title == item.title:
-				group = item
-				break
-
-		return group
-
-
-	def add_argument_group(self, title=None, description=None):
-		"""Adds an argument group to a given parser or the main parser
-		if no paser is supplied.
-		At least group title must be provided or method will rise
-		NameError exception. This is to prevent creation of titleless
-		and descriptionless argument groups. Although this is allowed by
-		argparse module I don't see any use of a such utility."""
-
-		# Do some sanity checks first.
-		if None == title:
-			raise NameError('Missing argument group title.')
-
-		group = self._parser.add_argument_group(title, description)
-		self._argumentGroups.append(group)
-
-
-	def add_argument(self, *args, **kwargs):
-		"""Wrapper for add_argument methods of argparse module. If
-		parameter group is supplied with valid group name, argument will
-		be added to that group. If group parameter is omitted argument
-		will be added to parser object. In a case of invalid group name
-		it rises ValueError exception.
-		"""
-
-		group = kwargs.pop('group', None)
-
-		if None == group:
-			self._parser.add_argument(*args, **kwargs)
-
-		else:
-			gobj = self._group_by_title(group)
-
-			if None == gobj:
-				raise ValueError(
-					'Trying to reference nonexisten \
-					argument group.'.replace('\t','')
-				)
-
-			else:
-				gobj.add_argument(*args, **kwargs)
+		self.parser = None
+		self.argumentGroups = list()
 
 
 class _MainProgram(_Program):
 	"""
 	"""
 
-	def __init__(self,
-		name=None,
-		description=None,
-		epilog=None,
-		mail=None
-	):
-
-		fmtEpilog = _format_epilog(epilog, mail)
-
-		self._parser = _argparse.ArgumentParser(
-			prog = name,
-			description = description,
-			epilog = epilog,
-			formatter_class = _argparse.RawDescriptionHelpFormatter
-			)
-
+	def __init__(self):
 		_Program.__init__(self)
-
-		self._subParsers = None
-
-
-	@property
-	def programName(self):
-		"""Utility function that makes accessing program name attribute
-		neat and hides implementation details.
-		"""
-		return self._parser.prog
-
-
-	@property
-	def programDescription(self):
-		"""Utility function that makes accessing program description
-		attribute neat and hides implementation details.
-		"""
-		return self._parser.description
-
-
-	def add_subparsers(self, title=None):
-		"""Wrapper for add_parsers method of ArgumentParser class. This
-		method is provided to enable custom subparsers title setup. If
-		'title' parameter is not provided (None) default value is used.
-		"""
-
-		if None == title:
-			title = \
-			'The {0} can be called with following commands:'\
-			.format(self._parser.prog.strip('.py'))
-
-		self._subParsers = self._parser.add_parsers(
-			title=title,
-			dest='command',
-			metavar=''
-		)
-
-
-	@property
-	def subParsersObject(self):
-		"""
-		"""
-
-		return self._subParsers
+		self.subParsers = None
 
 
 class _SubProgram(_Program):
 	"""
 	"""
 
-	def __init__(self,
-		subParsersObject=None,
-		name=None,
-		description=None,
-		epilog=None,
-		help=None
-	):
-
-		# Do some sanity checks first.
-		if not isinstance(subParsersObject, _argparse._SubParsersAction):
-			raise ValueError(
-				'Subparsers object not initialized or invalid \
-				object type.'.replace('\t','')
-		)
-
-		if None == commandName:
-			raise NameError('Missing command name.')
-
-		epilogFmtd = _format_epilog(commandEpilog, self.authorMail)
-
-		self._parser = subParsersObject.add_parser(
-			name,
-			description = description,
-			epilog = epilogFmtd,
-			help = help,
-			formatter_class=_argparse.RawDescriptionHelpFormatter
-		)
-
-		_Program.__init__(self)
-
+	def __init__(self):
+		self.parser = None
+		self.argumentGroups = list()
 
 
 #==============================================================================
@@ -284,8 +133,215 @@ class CommandLineApp(object):
 	command line.
 	"""
 
-	def __init__(self):
-		pass
+	def __init__(self,
+		programName=None,
+		programDescription=None,
+		programLicense=None,
+		versionString=None,
+		yearString=None,
+		authorName=None,
+		authorMail=None,
+		epilog=None):
+
+		self.programLicense = programLicense
+		self.versionString = versionString
+		self.yearString = yearString
+		self.authorName = authorName
+		self.authorMail = authorMail
+
+		fmtEpilog = _format_epilog(epilog, authorMail)
+
+		self._parsers['main'] = _MainProgram()
+		self._parsers['main'].parser = argparse.ArgumentParser(
+			prog = programName,
+			description = programDescription,
+			epilog = fmtEpilog,
+			formatter_class=argparse.RawDescriptionHelpFormatter
+			)
+
+		self._ation = None
+
+
+	@property
+	def programName(self):
+		"""Utility function that makes accessing program name attribute
+		neat and hides implementation details.
+		"""
+		return self._parsers['main'].parser.prog
+
+
+	@property
+	def programDescription(self):
+		"""Utility function that makes accessing program description
+		attribute neat and hides implementation details.
+		"""
+		return self._parsers['main'].parser.description
+
+
+	def add_subparsers(self, title=None):
+		"""Wrapper for add_parsers method of ArgumentParser class. This
+		method is provided to enable custom subparsers title setup. If
+		'title' parameter is not provided (None) default value is used.
+		"""
+
+		if None == title:
+			title = \
+			'The {0} can be called with following commands:'\
+			.format(self._paser.prog.strip('.py'))
+
+		# Make an alias to ease referencing a bit.
+		mp = self._parsers['main'].parser
+
+		mp.subParsers = mainparser.add_parsers(
+			title=title,
+			dest='command',
+			metavar='')
+
+
+	def add_subcommand(self,
+		commandName=None,
+		commandDescription=None,
+		commandEpilog=None,
+		commandHelp=None
+		):
+		"""
+		"""
+		# Do some sanity checks first.
+		if None == self._parsers['main'].subParsers:
+			raise ValueError('Subparser object not initialized.')
+		sp = self._parsers['main'].subParsers
+
+		if None == commandName:
+			raise NameError('Missing command name.')
+
+		if commadName in self._parsers:
+			raise ValueError(
+				'Duplicate entry. Command name already exists.'
+				)
+
+		epilogFmtd = _format_epilog(commandEpilog, self.authorMail)
+
+		self._parsers[commandName] = _SubProgram()
+		p = self._parsers[commandName].parser
+		p = sp.add_parser(
+			commandName,
+			description = commandDescription,
+			epilog = epilogFmtd,
+			help=commandHelp,
+			formatter_class=argparse.RawDescriptionHelpFormatter
+			)
+
+
+	def add_argument_group(self, title=None, description=None, parser='main'):
+		"""Adds an argument group to a given parser or the main parser
+		if no paser is supplied.
+		At least group title must be provided or method will rise
+		NameError exception. This is to prevent creation of titleless
+		and descriptionless argument groups. Although this is allowed by
+		argparse module I don't see any use of a such utility."""
+
+		if parser not in self._parsers:
+			raise ValueError(
+				'Trying to reference nonexistent parser.'
+				)
+
+		if None == title:
+			raise NameError('Missing arguments group title.')
+
+		p = self._parsers[parser]
+		group = p.add_argument_group(title, description)
+		p.argumentGroups.append(group)
+
+
+	def _group_by_title(self, title, parser='main'):
+
+		if parser not in self._parsers:
+			raise ValueError(
+				'Trying to reference nonexistent parser.'
+				)
+
+		p = self._parsers[parser]
+		group = None
+
+		for item in p.argumentGroups:
+			if title == item.title:
+				group = item
+				break
+
+		return group
+
+
+	def add_argument(self, *args, **kwargs):
+		"""Wrapper for add_argument methods of argparse module. If
+		parameter group is supplied with valid group name, argument will
+		be added to that group. If group parameter is omitted argument
+		will be added to parser object. In a case of invalid group name
+		it rises ValueError exception.
+		"""
+
+		paser = 'main'
+		if 'parser' in kwargs:
+			parser = kwargs.pop('parser')
+		if parser not in self._parsers:
+			raise ValueError(
+				'Trying to reference nonexistent parser.'
+				)
+		p = self._parsers[parser]
+
+		if 'group' not in kwargs or None == kwargs['group']:
+			p.add_argument(*args, **kwargs)
+
+		else:
+			group = self._group_by_title(
+				kwargs.pop('group'),
+				parser
+				)
+
+			if None == group:
+				raise ValueError(
+				'Trying to reference nonexisten argument group.'
+				)
+
+			else:
+				group.add_argument(*args, **kwargs)
+
+
+	def parse_args(self, args=None, namespace=None):
+		"""Wrapper for parse_args method of a parser object. It also
+		instantiates action object that will be executed based on a
+		input from command line.
+		"""
+
+		arguments = self._parsers['main'].parser.parse_args(args, namespace)
+
+		if arguments.usage:
+			self._action = _formulate_action(
+				ProgramUsageAction,
+				parser=self._parsers['main'].parser,
+				exitf=self._parsers['main'].parser.exit)
+
+		elif arguments.version:
+			self._action = _formulate_action(
+				ShowVersionAction,
+				prog=self._parsers['main'].parser.prog,
+				ver=self.versionString,
+				year=self.yearString,
+				author=self.authorName,
+				license=self.programLicense,
+				exitf=self._parsers['main'].parser.exit)
+
+		else:
+			self._action = _formulate_action(
+				DefaultAction,
+				prog=self._parsers['main'].parser.prog,
+				exitf=self._parsers['main'].parser.exit)
+
+
+	def run(self):
+		"""This method executes action code.
+		"""
+
+		self._action.execute()
 
 
 #==============================================================================
