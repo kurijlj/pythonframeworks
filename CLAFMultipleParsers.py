@@ -105,7 +105,6 @@ class _Program(object):
 	"""
 
 	def __init__(self):
-		self._parser.set_defaults(func=self.formulate_action)
 		self._argumentGroups = list()
 
 
@@ -117,7 +116,7 @@ class _Program(object):
 
 		group = None
 
-		for item in p._argumentGroups:
+		for item in self._argumentGroups:
 			if title == item.title:
 				group = item
 				break
@@ -180,6 +179,7 @@ class _Program(object):
 		"""
 	
 		self.formulate_action = _types.MethodType(method, self)
+		self._parser.set_defaults(func=self.formulate_action)
 
 
 
@@ -192,8 +192,8 @@ class _MainProgram(_Program):
 	def __init__(self,
 		name=None,
 		description=None,
-		epilog=None,
-		mail=None
+		mail=None,
+		epilog=None
 	):
 
 		fmtEpilog = _format_epilog(epilog, mail)
@@ -413,9 +413,30 @@ if __name__ == '__main__':
 	#
 	#program.parse_args()
 	#program.run()
+
 	mainprg = _MainProgram(
 		name=None,
-		description='This is main program.',
-		epilog=None,
-		mail='kurijlj@gmail.com'
+		description='Framework for application development \
+			implementing argp option parsing engine.\n\n\
+			Mandatory arguments to long options are mandatory for \
+			short options too.'\
+			.replace('\t',''),
+		mail='author@mail.com',
+		epilog=None
 	)
+
+	mainprg.add_argument_group(title='general options', description=None)
+	mainprg.add_argument(
+		'-V', '--version',
+		action='store_true',
+		help='print program version',
+		group='general options'
+	)
+	mainprg.add_argument(
+			'--usage',
+			action='store_true',
+			help='give a short usage message'
+	)
+
+	mainprg._parser.print_help()
+	mainprg._parser.print_usage()
