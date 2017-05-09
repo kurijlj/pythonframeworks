@@ -279,7 +279,7 @@ class CommandLineApp(object):
 		it rises ValueError exception.
 		"""
 
-		paser = 'main'
+		parser = 'main'
 		if 'parser' in kwargs:
 			parser = kwargs.pop('parser')
 		if parser not in self._parsers:

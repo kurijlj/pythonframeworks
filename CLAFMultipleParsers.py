@@ -97,16 +97,11 @@ def _attach_action_factory(target, method):
 #==============================================================================
 
 class _Program(object):
-	"""Abstract base class for MainProgram and SubProgram classes.
+	"""Abstract base class for _MainProgram and _SubProgram classes.
 	
 	Every app can be divided into main program and number of subprograms
 	(subcommands). This class defines common properties for both types of
 	objects.
-
-	This class or its subclasses should not implement any methods (except
-	constructor) for accessing its properties, this is done elsewhere
-	(CommandLineApp class). The sole purpose of this classes and its
-	subclasses is to group relevant data for parser and each of subparsers.
 	"""
 
 	def __init__(self):
@@ -115,7 +110,9 @@ class _Program(object):
 
 
 	def _group_by_title(self, title):
-		"""
+		"""It retrieves argument group object from argument groups list for
+		given group title. If group with given title does not exist in the
+		group list it returns None.
 		"""
 
 		group = None
@@ -129,8 +126,7 @@ class _Program(object):
 
 
 	def add_argument_group(self, title=None, description=None):
-		"""Adds an argument group to a given parser or the main parser
-		if no paser is supplied.
+		"""Adds an argument group to the program object.
 		At least group title must be provided or method will rise
 		NameError exception. This is to prevent creation of titleless
 		and descriptionless argument groups. Although this is allowed by
@@ -170,8 +166,27 @@ class _Program(object):
 				gobj.add_argument(*args, **kwargs)
 
 
+	def attach_action_factory(self, method):
+		"""Attach action factory method to the program object.
+		
+		Action factory method is used to formulate proper action (program action
+		object) according to user given command line options.
+		
+		Action factory method is to be defined outside program object. It must
+		accept two arguments, 'obj' holding program object to which method
+		is attached and 'args' holding parsed command line arguments. When
+		proper program action object is formulated and instantiated, method
+		returns this object to the caller.
+		"""
+	
+		self.formulate_action = _types.MethodType(method, self)
+
+
+
 class _MainProgram(_Program):
-	"""
+	"""Class to wrap main parser object, created using argparse.ArgumentParser()
+	constructor. It also provides an access to basic parser properties, as well
+	as parse_args method.
 	"""
 
 	def __init__(self,
@@ -231,14 +246,23 @@ class _MainProgram(_Program):
 
 	@property
 	def subParsersObject(self):
-		"""
+		"""Provides access to subparsers object which have to be provided when
+		instantiating subprogram objects.
 		"""
 
 		return self._subParsers
 
 
+	def parse_args(self, args=None, namespace=None):
+		"""Wrapper for parse_args method of the parser object.
+		"""
+
+		return self._parser.parse_args(args, namespace)
+
+
 class _SubProgram(_Program):
-	"""
+	"""Class to wrap subparser objects, created using
+	_subParsersAction.ArgumentParser() constructor.
 	"""
 
 	def __init__(self,
@@ -358,34 +382,40 @@ class DefaultAction(ProgramAction):
 #==============================================================================
 
 if __name__ == '__main__':
-	program = CommandLineApp(
-		programDescription='Framework for application development \
-			implementing argp option parsing engine.\n\n\
-			Mandatory arguments to long options are mandatory for \
-			short options too.'\
-			.replace('\t',''),
-		programLicense='License GPLv3+: GNU GPL version 3 or later \
-			<http://gnu.org/licenses/gpl.html>\n\
-			This is free software: you are free to change and \
-			redistribute it.\n\
-			There is NO WARRANTY, to the extent permitted by law.'\
-			.replace('\t',''),
-		versionString='i.i',
-		yearString='yyyy',
-		authorName='Author Name',
-		authorMail='author@mail.com',
-		epilog=None)
-
-	program.add_argument_group('general options')
-	program.add_argument(
-		'-V', '--version',
-		action='store_true',
-		help='print program version',
-		group='general options')
-	program.add_argument(
-			'--usage',
-			action='store_true',
-			help='give a short usage message')
-
-	program.parse_args()
-	program.run()
+	#program = CommandLineApp(
+	#	programDescription='Framework for application development \
+	#		implementing argp option parsing engine.\n\n\
+	#		Mandatory arguments to long options are mandatory for \
+	#		short options too.'\
+	#		.replace('\t',''),
+	#	programLicense='License GPLv3+: GNU GPL version 3 or later \
+	#		<http://gnu.org/licenses/gpl.html>\n\
+	#		This is free software: you are free to change and \
+	#		redistribute it.\n\
+	#		There is NO WARRANTY, to the extent permitted by law.'\
+	#		.replace('\t',''),
+	#	versionString='i.i',
+	#	yearString='yyyy',
+	#	authorName='Author Name',
+	#	authorMail='author@mail.com',
+	#	epilog=None)
+	#
+	#program.add_argument_group('general options')
+	#program.add_argument(
+	#	'-V', '--version',
+	#	action='store_true',
+	#	help='print program version',
+	#	group='general options')
+	#program.add_argument(
+	#		'--usage',
+	#		action='store_true',
+	#		help='give a short usage message')
+	#
+	#program.parse_args()
+	#program.run()
+	mainprg = _MainProgram(
+		name=None,
+		description='This is main program.',
+		epilog=None,
+		mail='kurijlj@gmail.com'
+	)
