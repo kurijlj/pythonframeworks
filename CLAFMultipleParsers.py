@@ -50,7 +50,6 @@ def _format_epilog(epilogAddition, bugMail):
 	value for epilog parameter when constructing parser object.
 	"""
 
-	fmtAdition = None
 	fmtMail = None
 	fmtEpilog = None
 
@@ -105,6 +104,7 @@ class _Program(object):
 	"""
 
 	def __init__(self):
+		self._parser = None
 		self._argumentGroups = list()
 
 
@@ -134,6 +134,7 @@ class _Program(object):
 		# Do some sanity checks first.
 		if None == title:
 			raise NameError('Missing argument group title.')
+			
 
 		group = self._parser.add_argument_group(title, description)
 		self._argumentGroups.append(group)
@@ -195,17 +196,17 @@ class _MainProgram(_Program):
 		mail=None,
 		epilog=None
 	):
+		
+		_Program.__init__(self)
 
 		fmtEpilog = _format_epilog(epilog, mail)
 
 		self._parser = _argparse.ArgumentParser(
 			prog = name,
 			description = description,
-			epilog = epilog,
+			epilog = fmtEpilog,
 			formatter_class = _argparse.RawDescriptionHelpFormatter
 			)
-
-		_Program.__init__(self)
 
 		self._subParsers = None
 
@@ -237,7 +238,7 @@ class _MainProgram(_Program):
 			'The {0} can be called with following commands:'\
 			.format(self._parser.prog.strip('.py'))
 
-		self._subParsers = self._parser.add_parsers(
+		self._subParsers = self._parser.add_subparsers(
 			title=title,
 			dest='command',
 			metavar=''
@@ -269,9 +270,12 @@ class _SubProgram(_Program):
 		subParsersObject=None,
 		name=None,
 		description=None,
-		epilog=None,
-		help=None
+		mail=None,
+		help=None,
+		epilog=None
 	):
+
+		_Program.__init__(self)
 
 		# Do some sanity checks first.
 		if not isinstance(subParsersObject, _argparse._SubParsersAction):
@@ -280,10 +284,10 @@ class _SubProgram(_Program):
 				object type.'.replace('\t','')
 		)
 
-		if None == commandName:
+		if None == name:
 			raise NameError('Missing command name.')
 
-		epilogFmtd = _format_epilog(commandEpilog, self.authorMail)
+		epilogFmtd = _format_epilog(epilog, mail)
 
 		self._parser = subParsersObject.add_parser(
 			name,
@@ -292,9 +296,6 @@ class _SubProgram(_Program):
 			help = help,
 			formatter_class=_argparse.RawDescriptionHelpFormatter
 		)
-
-		_Program.__init__(self)
-
 
 
 #==============================================================================
@@ -325,7 +326,7 @@ class ProgramAction(object):
 	"""
 
 	def __init__(self, exitf):
-		self._exit_app = efitf
+		self._exit_app = exitf
 
 	def execute(self):
 		pass
@@ -437,6 +438,39 @@ if __name__ == '__main__':
 			action='store_true',
 			help='give a short usage message'
 	)
+	
+	mainprg.add_subparsers()
+	
+	loginprg = _SubProgram(
+		subParsersObject=mainprg.subParsersObject,
+		name='login',
+		description='Command to login user to remote service.',
+		mail='author@mail.com',
+		help='Login user to remote service.',
+		epilog=None
+		)
 
+	loginprg.add_argument_group(title='general options', description=None)
+	loginprg.add_argument(
+		'-V', '--version',
+		action='store_true',
+		help='print program version',
+		group='general options'
+	)
+	loginprg.add_argument(
+			'--usage',
+			action='store_true',
+			help='give a short usage message'
+	)
+
+	print mainprg.programName
+	print mainprg.programDescription
+	print ''
 	mainprg._parser.print_help()
+	print ''
 	mainprg._parser.print_usage()
+	print ''
+	loginprg._parser.print_help()
+	print ''
+	loginprg._parser.print_usage()
+	print ''
