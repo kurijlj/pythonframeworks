@@ -180,6 +180,8 @@ class _Program(object):
 		"""
 	
 		self.formulate_action = _types.MethodType(method, self)
+
+		# Set default action for the parser.
 		self._parser.set_defaults(func=self.formulate_action)
 
 
@@ -332,7 +334,7 @@ class ProgramAction(object):
 		pass
 
 
-class ProgramUsageAction(ProgramAction):
+class UsageAction(ProgramAction):
 	"""Program action that formats and displays usage message to the stdout.
 	"""
 
@@ -379,6 +381,88 @@ class DefaultAction(ProgramAction):
 
 
 #==============================================================================
+# Action factories
+#==============================================================================
+
+#def main_action_factory(obj, args):
+#
+#	action = None
+#
+#	if args.usage:
+#		action = _formulate_action(
+#			UsageAction,
+#			parser=obj._parser,
+#			exitf=obj._parser.exit
+#		)
+#
+#	elif args.version:
+#		action = _formulate_action(
+#			ShowVersionAction,
+#			prog=obj._parser.prog,
+##			ver=self.versionString,
+##			year=self.yearString,
+##			author=self.authorName,
+##			license=self.programLicense,
+#			ver='i.i',
+#			year='yyyy',
+#			author='Author Name',
+#			license='License GPLv3+',
+#			exitf=obj._parser.exit
+#		)
+#
+#	else:
+#		action = _formulate_action(
+#			DefaultAction,
+#			prog=obj._parser.prog,
+#			exitf=obj._parser.exit
+#		)
+#
+#	return action
+
+
+def login_action_factory(obj, args):
+
+#	action = None
+#
+#	if args.usage:
+#		action = _formulate_action(
+#			UsageAction,
+#			parser=obj._parser,
+#			exitf=obj._parser.exit
+#		)
+#
+#	elif args.version:
+#		action = _formulate_action(
+#			ShowVersionAction,
+#			prog=obj._parser.prog,
+##			ver=self.versionString,
+##			year=self.yearString,
+##			author=self.authorName,
+##			license=self.programLicense,
+#			ver='i.i',
+#			year='yyyy',
+#			author='Author Name',
+#			license='License GPLv3+',
+#			exitf=obj._parser.exit
+#		)
+#
+#	else:
+#		action = _formulate_action(
+#			DefaultAction,
+#			prog=obj._parser.prog,
+#			exitf=obj._parser.exit
+#		)
+#
+#	return acion
+
+	return _formulate_action(
+		DefaultAction,
+		prog=obj._parser.prog,
+		exitf=obj._parser.exit
+	)
+
+
+#==============================================================================
 # Script main body
 #==============================================================================
 
@@ -404,9 +488,12 @@ if __name__ == '__main__':
 	#program.add_argument_group('general options')
 	#program.add_argument(
 	#	'-V', '--version',
-	#	action='store_true',
+	#	action='version',
 	#	help='print program version',
-	#	group='general options')
+	#	version='%(prog)s i.i'
+	#)
+	#	group='general options'
+	#)
 	#program.add_argument(
 	#		'--usage',
 	#		action='store_true',
@@ -426,21 +513,26 @@ if __name__ == '__main__':
 		epilog=None
 	)
 
-	mainprg.add_argument_group(title='general options', description=None)
+	#mainprg.add_argument_group(title='general options', description=None)
 	mainprg.add_argument(
 		'-V', '--version',
-		action='store_true',
+	#	action='store_true',
+		action='version',
 		help='print program version',
-		group='general options'
+		version='%(prog)s i.i'
 	)
-	mainprg.add_argument(
-			'--usage',
-			action='store_true',
-			help='give a short usage message'
-	)
-	
+	#	group='general options'
+	#)
+	#mainprg.add_argument(
+	#		'--usage',
+	#		action='store_true',
+	#		help='give a short usage message'
+	#)
+
+	#mainprg.attach_action_factory(main_action_factory)
+
 	mainprg.add_subparsers()
-	
+
 	loginprg = _SubProgram(
 		subParsersObject=mainprg.subParsersObject,
 		name='login',
@@ -450,27 +542,20 @@ if __name__ == '__main__':
 		epilog=None
 		)
 
-	loginprg.add_argument_group(title='general options', description=None)
-	loginprg.add_argument(
-		'-V', '--version',
-		action='store_true',
-		help='print program version',
-		group='general options'
-	)
-	loginprg.add_argument(
-			'--usage',
-			action='store_true',
-			help='give a short usage message'
-	)
+	#loginprg.add_argument(
+	#	'-V', '--version',
+	#	action='version',
+	#	help='print program version',
+	#	version='%(prog)s i.i'
+	#)
+	#loginprg.add_argument(
+	#		'--usage',
+	#		action='store_true',
+	#		help='give a short usage message'
+	#)
 
-	print mainprg.programName
-	print mainprg.programDescription
-	print ''
-	mainprg._parser.print_help()
-	print ''
-	mainprg._parser.print_usage()
-	print ''
-	loginprg._parser.print_help()
-	print ''
-	loginprg._parser.print_usage()
-	print ''
+	loginprg.attach_action_factory(login_action_factory)
+
+	args = mainprg.parse_args()
+	action = args.func(args)
+	action.execute()
