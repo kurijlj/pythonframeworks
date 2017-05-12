@@ -311,8 +311,93 @@ class CommandLineApp(object):
 	command line.
 	"""
 
-	def __init__(self):
-		pass
+	def __init__(self,
+		name=None,
+		description=None,
+		license=None,
+		version=None,
+		year=None,
+		author=None,
+		mail=None
+	):
+		self._programName = name
+		self._programDescription = description
+		self._programLicense = license
+		self._versionString = version
+		self._yearString = year
+		self._authorName = author
+		self._authorMail = mail
+		self._args = None
+		self.main = None
+
+
+	@property
+	def programName(self):
+		"""
+		"""
+	
+		return self._programName
+
+
+	@property
+	def programDescription(self):
+		"""
+		"""
+	
+		return self._programDescription
+
+
+	@property
+	def programLicense(self):
+		"""
+		"""
+	
+		return self._programLicense
+
+
+	@property
+	def versionString(self):
+		"""
+		"""
+	
+		return self._versionString
+
+
+	@property
+	def yearString(self):
+		"""
+		"""
+	
+		return self._yearString
+
+
+	@property
+	def authorName(self):
+		"""
+		"""
+	
+		return self._authorName
+
+
+	@property
+	def authorMail(self):
+		"""
+		"""
+	
+		return self._authorMail
+
+
+	def attach_program(self, program, obj):
+		"""
+		"""
+	
+		# Do some basic sanity checks first.
+		if type(program) is not str and not program:
+			raise ValueError('Invalid program name.')
+		if not issubclass(type(obj), _Program):
+			raise ValueError('Invalid object type.')
+	
+		setattr(self, program, obj)
 
 
 #==============================================================================
@@ -384,76 +469,43 @@ class DefaultAction(ProgramAction):
 # Action factories
 #==============================================================================
 
-#def main_action_factory(obj, args):
-#
-#	action = None
-#
-#	if args.usage:
-#		action = _formulate_action(
-#			UsageAction,
-#			parser=obj._parser,
-#			exitf=obj._parser.exit
-#		)
-#
-#	elif args.version:
-#		action = _formulate_action(
-#			ShowVersionAction,
-#			prog=obj._parser.prog,
-##			ver=self.versionString,
-##			year=self.yearString,
-##			author=self.authorName,
-##			license=self.programLicense,
-#			ver='i.i',
-#			year='yyyy',
-#			author='Author Name',
-#			license='License GPLv3+',
-#			exitf=obj._parser.exit
-#		)
-#
-#	else:
-#		action = _formulate_action(
-#			DefaultAction,
-#			prog=obj._parser.prog,
-#			exitf=obj._parser.exit
-#		)
-#
-#	return action
+def main_action_factory(obj, args):
+
+	action = None
+
+	if args.usage:
+		action = _formulate_action(
+			UsageAction,
+			parser=obj._parser,
+			exitf=obj._parser.exit
+		)
+
+	elif args.version:
+		action = _formulate_action(
+			ShowVersionAction,
+			prog=obj._parser.prog,
+#			ver=self.versionString,
+#			year=self.yearString,
+#			author=self.authorName,
+#			license=self.programLicense,
+			ver='i.i',
+			year='yyyy',
+			author='Author Name',
+			license='License GPLv3+',
+			exitf=obj._parser.exit
+		)
+
+	else:
+		action = _formulate_action(
+			DefaultAction,
+			prog=obj._parser.prog,
+			exitf=obj._parser.exit
+		)
+
+	return action
 
 
 def login_action_factory(obj, args):
-
-#	action = None
-#
-#	if args.usage:
-#		action = _formulate_action(
-#			UsageAction,
-#			parser=obj._parser,
-#			exitf=obj._parser.exit
-#		)
-#
-#	elif args.version:
-#		action = _formulate_action(
-#			ShowVersionAction,
-#			prog=obj._parser.prog,
-##			ver=self.versionString,
-##			year=self.yearString,
-##			author=self.authorName,
-##			license=self.programLicense,
-#			ver='i.i',
-#			year='yyyy',
-#			author='Author Name',
-#			license='License GPLv3+',
-#			exitf=obj._parser.exit
-#		)
-#
-#	else:
-#		action = _formulate_action(
-#			DefaultAction,
-#			prog=obj._parser.prog,
-#			exitf=obj._parser.exit
-#		)
-#
-#	return acion
 
 	return _formulate_action(
 		DefaultAction,
@@ -516,17 +568,11 @@ if __name__ == '__main__':
 	#mainprg.add_argument_group(title='general options', description=None)
 	mainprg.add_argument(
 		'-V', '--version',
-	#	action='store_true',
 		action='version',
 		help='print program version',
 		version='%(prog)s i.i'
 	)
 	#	group='general options'
-	#)
-	#mainprg.add_argument(
-	#		'--usage',
-	#		action='store_true',
-	#		help='give a short usage message'
 	#)
 
 	#mainprg.attach_action_factory(main_action_factory)
@@ -540,19 +586,7 @@ if __name__ == '__main__':
 		mail='author@mail.com',
 		help='Login user to remote service.',
 		epilog=None
-		)
-
-	#loginprg.add_argument(
-	#	'-V', '--version',
-	#	action='version',
-	#	help='print program version',
-	#	version='%(prog)s i.i'
-	#)
-	#loginprg.add_argument(
-	#		'--usage',
-	#		action='store_true',
-	#		help='give a short usage message'
-	#)
+	)
 
 	loginprg.attach_action_factory(login_action_factory)
 

@@ -4,6 +4,7 @@
 if __name__ == '__main__':
 
 	import argparse as ap
+	from argparse import Action as _Action
 
 
 	class TestClass(object):
@@ -12,6 +13,15 @@ if __name__ == '__main__':
 
 		def print_message(self, arguments):
 			print arguments
+	
+
+	class VersionAction(_Action):
+		"""
+		"""
+		
+		def __call__(self, parser, namespace, values, option_string=None):
+			print "Version action is running."
+			_Action.__call__(self, parser, namespace, values, option_string)
 
 
 	parser = ap.ArgumentParser(
@@ -20,7 +30,7 @@ if __name__ == '__main__':
 		epilog='This is main program epilog.',
 		formatter_class=ap.RawDescriptionHelpFormatter
 	)
-
+	
 	generalArgumentsGroup = parser.add_argument_group(
 		title='general options',
 		description=None
@@ -34,7 +44,8 @@ if __name__ == '__main__':
 
 	generalArgumentsGroup.add_argument(
 		'-V', '--version',
-		action='store_true',
+		action=VersionAction,
+		nargs=0,
 		help='print program version'
 		)
 
@@ -69,9 +80,6 @@ if __name__ == '__main__':
 		help='user to logout'
 	)
 
-	print type(subparsers).__name__
-	if isinstance(subparsers, ap._SubParsersAction):
-		print "TRUE"
 	args = parser.parse_args()
 	args.func(args)
 	parser.exit()
