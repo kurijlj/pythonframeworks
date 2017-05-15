@@ -182,7 +182,6 @@ class _Program(object):
 		self._parser.set_defaults(func=self.formulate_action)
 
 
-
 class _MainProgram(_Program):
 	"""Class to wrap main parser object, created using argparse.ArgumentParser()
 	constructor. It also provides an access to basic parser properties, as well
@@ -191,19 +190,16 @@ class _MainProgram(_Program):
 
 	def __init__(self,
 		app=None,
-		name=None,
-		description=None,
-		mail=None,
 		epilog=None
 	):
 
 		_Program.__init__(self, app)
 
-		fmtEpilog = _format_epilog(epilog, mail)
+		fmtEpilog = _format_epilog(epilog, self._app.authorMail)
 
 		self._parser = _argparse.ArgumentParser(
-			prog = name,
-			description = description,
+			prog = self._app.programName,
+			description = self._app.programDescription,
 			epilog = fmtEpilog,
 			formatter_class = _argparse.RawDescriptionHelpFormatter
 			)
@@ -335,7 +331,10 @@ class CommandLineApp(object):
 		"""
 		"""
 
-		return self._programName
+		if self.main:
+			return self.main.programName
+		else:
+			return self._programName
 
 
 	@property
@@ -343,7 +342,10 @@ class CommandLineApp(object):
 		"""
 		"""
 
-		return self._programDescription
+		if self.main:
+			return self.main.programDescription
+		else:
+			return self._programDescription
 
 
 	@property
@@ -399,7 +401,31 @@ class CommandLineApp(object):
 		setattr(self, program, obj)
 
 
-	def pase_args(self, args=None, namespace=None):
+	def add_argument_group(self, program, title=None, description=None):
+		"""
+		"""
+	
+		obj = getattr(self, program, None)
+		
+		if not obj:
+			raise NameError('Trying to reference nonexistent program.')
+	
+		obj.add_argument_group(title=title, description=description)
+
+	
+	def add_argument(self, program, *args, **kwargs):
+		"""
+		"""
+	
+		obj = getattr(self, program, None)
+		
+		if not obj:
+			raise NameError('Trying to reference nonexistent program.')
+	
+		obj.add_argument(args, kwargs)
+
+
+	def parse_args(self, args=None, namespace=None):
 		"""
 		"""
 
@@ -415,7 +441,7 @@ class CommandLineApp(object):
 
 
 #==============================================================================
-# App action classes
+# Program action classes
 #==============================================================================
 
 class ProgramAction(object):
@@ -433,35 +459,20 @@ class ProgramAction(object):
 		self._exit_app()
 
 
-#class UsageAction(ProgramAction):
-#	"""Program action that formats and displays usage message to the stdout.
-#	"""
-#
-#	def __init__(self, parser, exitf):
-#		ProgramAction.__init__(self, exitf)
-#		self._usageMessage = \
-#		'{usage}Try \'{prog} --help\' for more information.'\
-#		.format(usage=parser.format_usage(), prog=parser.prog)
-#
-#	def execute(self):
-#		print self._usageMessage
-#		ProgramAction.execute(self)
-#
-#
-#class ShowVersionAction(ProgramAction):
-#	"""Program action that formats and displays program version information
-#	to the stdout.
-#	"""
-#
-#	def __init__(self, prog, ver, year, author, license, exitf):
-#		ProgramAction.__init__(self, exitf)
-#		self._versionMessage = \
-#		'{0} {1} Copyright (C) {2} {3}\n{4}'\
-#		.format(prog, ver, year, author, license)
-#
-#	def execute(self):
-#		print self._versionMessage
-#		ProgramAction.execute(self)
+class ShowVersionAction(ProgramAction):
+	"""Program action that formats and displays program version information
+	to the stdout.
+	"""
+
+	def __init__(self, prog, ver, year, author, license, exitf):
+		ProgramAction.__init__(self, exitf)
+		self._versionMessage = \
+		'{0} {1} Copyright (C) {2} {3}\n{4}'\
+		.format(prog, ver, year, author, license)
+
+	def execute(self):
+		print self._versionMessage
+		ProgramAction.execute(self)
 
 
 class DefaultAction(ProgramAction):
@@ -506,67 +517,37 @@ def login_action_factory(obj, args):
 #==============================================================================
 
 if __name__ == '__main__':
-	#program = CommandLineApp(
-	#	programDescription='Framework for application development \
-	#		implementing argp option parsing engine.\n\n\
-	#		Mandatory arguments to long options are mandatory for \
-	#		short options too.'\
-	#		.replace('\t',''),
-	#	programLicense='License GPLv3+: GNU GPL version 3 or later \
-	#		<http://gnu.org/licenses/gpl.html>\n\
-	#		This is free software: you are free to change and \
-	#		redistribute it.\n\
-	#		There is NO WARRANTY, to the extent permitted by law.'\
-	#		.replace('\t',''),
-	#	versionString='i.i',
-	#	yearString='yyyy',
-	#	authorName='Author Name',
-	#	authorMail='author@mail.com',
-	#	epilog=None)
-	#
-	#program.add_argument_group('general options')
-	#program.add_argument(
-	#	'-V', '--version',
-	#	action='version',
-	#	help='print program version',
-	#	version='%(prog)s i.i'
-	#)
-	#	group='general options'
-	#)
-	#program.add_argument(
-	#		'--usage',
-	#		action='store_true',
-	#		help='give a short usage message')
-	#
-	#program.parse_args()
-	#program.run()
-
-	mainprg = _MainProgram(
-		name=None,
+	app = CommandLineApp(
 		description='Framework for application development \
 			implementing argp option parsing engine.\n\n\
 			Mandatory arguments to long options are mandatory for \
 			short options too.'\
 			.replace('\t',''),
-		mail='author@mail.com',
-		epilog=None
+		license='License GPLv3+: GNU GPL version 3 or later \
+			<http://gnu.org/licenses/gpl.html>\n\
+			This is free software: you are free to change and \
+			redistribute it.\n\
+			There is NO WARRANTY, to the extent permitted by law.'\
+			.replace('\t',''),
+		version='i.i',
+		year='yyyy',
+		author='Author Name',
+		mail='author@mail.com'
 	)
 
-	#mainprg.add_argument_group(title='general options', description=None)
+	mainprg = _MainProgram(app=app, epilog=None)
+
 	mainprg.add_argument(
 		'-V', '--version',
 		action='version',
 		help='print program version',
 		version='%(prog)s i.i'
 	)
-	#	group='general options'
-	#)
-
-	#mainprg.attach_action_factory(main_action_factory)
 
 	mainprg.add_subparsers()
 
 	loginprg = _SubProgram(
+		app=app,
 		subParsersObject=mainprg.subParsersObject,
 		name='login',
 		description='Command to login user to remote service.',
@@ -577,6 +558,8 @@ if __name__ == '__main__':
 
 	loginprg.attach_action_factory(login_action_factory)
 
-	args = mainprg.parse_args()
-	action = args.func(args)
-	action.execute()
+	app.attach_program('main', mainprg)
+	app.attach_program('login', loginprg)
+	
+	app.parse_args()
+	app.run()
