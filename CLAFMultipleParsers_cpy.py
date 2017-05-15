@@ -82,6 +82,15 @@ def _formulate_action(Action, **kwargs):
 	return Action(**kwargs)
 
 
+def _attach_action_factory(target, method):
+	"""
+	def action_factory(obj, args):
+		return ActionObject
+	"""
+
+	target.method = _types.MethodType(method, target)
+
+
 #==============================================================================
 # Program classes
 #==============================================================================
@@ -94,13 +103,7 @@ class _Program(object):
 	objects.
 	"""
 
-	def __init__(self, app):
-
-		# Do some sanity checks first.
-		if type(app) is not CommandLineApp:
-			raise ValueError('Invalid object type or None.')
-
-		self._app = app
+	def __init__(self):
 		self._parser = None
 		self._argumentGroups = list()
 
@@ -190,14 +193,13 @@ class _MainProgram(_Program):
 	"""
 
 	def __init__(self,
-		app=None,
 		name=None,
 		description=None,
 		mail=None,
 		epilog=None
 	):
-
-		_Program.__init__(self, app)
+		
+		_Program.__init__(self)
 
 		fmtEpilog = _format_epilog(epilog, mail)
 
@@ -267,7 +269,6 @@ class _SubProgram(_Program):
 	"""
 
 	def __init__(self,
-		app=None,
 		subParsersObject=None,
 		name=None,
 		description=None,
@@ -276,14 +277,14 @@ class _SubProgram(_Program):
 		epilog=None
 	):
 
-		_Program.__init__(self, app)
+		_Program.__init__(self)
 
 		# Do some sanity checks first.
 		if not isinstance(subParsersObject, _argparse._SubParsersAction):
 			raise ValueError(
 				'Subparsers object not initialized or invalid \
 				object type.'.replace('\t','')
-			)
+		)
 
 		if None == name:
 			raise NameError('Missing command name.')
@@ -326,7 +327,7 @@ class CommandLineApp(object):
 		self._yearString = year
 		self._authorName = author
 		self._authorMail = mail
-		self._action = None
+		self._args = None
 		self.main = None
 
 
@@ -334,7 +335,7 @@ class CommandLineApp(object):
 	def programName(self):
 		"""
 		"""
-
+	
 		return self._programName
 
 
@@ -342,7 +343,7 @@ class CommandLineApp(object):
 	def programDescription(self):
 		"""
 		"""
-
+	
 		return self._programDescription
 
 
@@ -350,7 +351,7 @@ class CommandLineApp(object):
 	def programLicense(self):
 		"""
 		"""
-
+	
 		return self._programLicense
 
 
@@ -358,7 +359,7 @@ class CommandLineApp(object):
 	def versionString(self):
 		"""
 		"""
-
+	
 		return self._versionString
 
 
@@ -366,7 +367,7 @@ class CommandLineApp(object):
 	def yearString(self):
 		"""
 		"""
-
+	
 		return self._yearString
 
 
@@ -374,7 +375,7 @@ class CommandLineApp(object):
 	def authorName(self):
 		"""
 		"""
-
+	
 		return self._authorName
 
 
@@ -382,7 +383,7 @@ class CommandLineApp(object):
 	def authorMail(self):
 		"""
 		"""
-
+	
 		return self._authorMail
 
 
@@ -392,26 +393,11 @@ class CommandLineApp(object):
 	
 		# Do some basic sanity checks first.
 		if type(program) is not str and not program:
-			raise ValueError('Empty string or not an string object.')
+			raise ValueError('Invalid program name.')
 		if not issubclass(type(obj), _Program):
 			raise ValueError('Invalid object type.')
-
+	
 		setattr(self, program, obj)
-
-
-	def pase_args(self, args=None, namespace=None):
-		"""
-		"""
-
-		args = self.main.parse_args(args=None, namespace=None)
-		self._action = args.func(args)
-
-
-	def run(self):
-		"""
-		"""
-
-		self._action.execute()
 
 
 #==============================================================================
@@ -430,38 +416,38 @@ class ProgramAction(object):
 		self._exit_app = exitf
 
 	def execute(self):
+		pass
+
+
+class UsageAction(ProgramAction):
+	"""Program action that formats and displays usage message to the stdout.
+	"""
+
+	def __init__(self, parser, exitf):
+		self._usageMessage = \
+		'{usage}Try \'{prog} --help\' for more information.'\
+		.format(usage=parser.format_usage(), prog=parser.prog)
+		self._exit_app = exitf
+
+	def execute(self):
+		print self._usageMessage
 		self._exit_app()
 
 
-#class UsageAction(ProgramAction):
-#	"""Program action that formats and displays usage message to the stdout.
-#	"""
-#
-#	def __init__(self, parser, exitf):
-#		ProgramAction.__init__(self, exitf)
-#		self._usageMessage = \
-#		'{usage}Try \'{prog} --help\' for more information.'\
-#		.format(usage=parser.format_usage(), prog=parser.prog)
-#
-#	def execute(self):
-#		print self._usageMessage
-#		ProgramAction.execute(self)
-#
-#
-#class ShowVersionAction(ProgramAction):
-#	"""Program action that formats and displays program version information
-#	to the stdout.
-#	"""
-#
-#	def __init__(self, prog, ver, year, author, license, exitf):
-#		ProgramAction.__init__(self, exitf)
-#		self._versionMessage = \
-#		'{0} {1} Copyright (C) {2} {3}\n{4}'\
-#		.format(prog, ver, year, author, license)
-#
-#	def execute(self):
-#		print self._versionMessage
-#		ProgramAction.execute(self)
+class ShowVersionAction(ProgramAction):
+	"""Program action that formats and displays program version information
+	to the stdout.
+	"""
+
+	def __init__(self, prog, ver, year, author, license, exitf):
+		self._versionMessage = \
+		'{0} {1} Copyright (C) {2} {3}\n{4}'\
+		.format(prog, ver, year, author, license)
+		self._exit_app = exitf
+
+	def execute(self):
+		print self._versionMessage
+		self._exit_app()
 
 
 class DefaultAction(ProgramAction):
@@ -471,12 +457,12 @@ class DefaultAction(ProgramAction):
 	"""
 
 	def __init__(self, prog, exitf):
-		ProgramAction.__init__(self, exitf)
 		self._programName = prog
+		self._exit_app = exitf
 
 	def execute(self):
 		print '{0}: Hello World!\n'.format(self._programName)
-		ProgramAction.execute(self)
+		self._exit_app()
 
 
 #==============================================================================
@@ -485,11 +471,38 @@ class DefaultAction(ProgramAction):
 
 def main_action_factory(obj, args):
 
-	return _formulate_action(
-		DefaultAction,
-		prog=obj._parser.prog,
-		exitf=obj._parser.exit
-	)
+	action = None
+
+	if args.usage:
+		action = _formulate_action(
+			UsageAction,
+			parser=obj._parser,
+			exitf=obj._parser.exit
+		)
+
+	elif args.version:
+		action = _formulate_action(
+			ShowVersionAction,
+			prog=obj._parser.prog,
+#			ver=self.versionString,
+#			year=self.yearString,
+#			author=self.authorName,
+#			license=self.programLicense,
+			ver='i.i',
+			year='yyyy',
+			author='Author Name',
+			license='License GPLv3+',
+			exitf=obj._parser.exit
+		)
+
+	else:
+		action = _formulate_action(
+			DefaultAction,
+			prog=obj._parser.prog,
+			exitf=obj._parser.exit
+		)
+
+	return action
 
 
 def login_action_factory(obj, args):
