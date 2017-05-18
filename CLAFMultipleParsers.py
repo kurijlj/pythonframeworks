@@ -132,6 +132,9 @@ class _Program(object):
 		if None == title:
 			raise NameError('Missing argument group title.')
 			
+		if type(title) is not str or not title:
+			raise ValueError('Empty string or not an string object.')
+			
 
 		group = self._parser.add_argument_group(title, description)
 		self._argumentGroups.append(group)
@@ -143,6 +146,8 @@ class _Program(object):
 		be added to that group. If group parameter is omitted argument
 		will be added to parser object. In a case of invalid group name
 		it rises ValueError exception.
+		
+		Group must be provided as dictionary entru group='groupname'.
 		"""
 
 		group = kwargs.pop('group', None)
@@ -184,8 +189,11 @@ class _Program(object):
 
 class _MainProgram(_Program):
 	"""Class to wrap main parser object, created using argparse.ArgumentParser()
-	constructor. It also provides an access to basic parser properties, as well
-	as parse_args method.
+	constructor. It provides an access to basic parser properties, parse_args
+	method, as well to subparsers action object.
+	
+	In a multiparser application there is no need to attach an action factory
+	method to the main progarm instance because it will never be called.
 	"""
 
 	def __init__(self,
@@ -209,16 +217,16 @@ class _MainProgram(_Program):
 
 	@property
 	def programName(self):
-		"""Utility function that makes accessing program name attribute
-		neat and hides implementation details.
+		"""Utility function that makes accessing program name attribute neat
+		and hides implementation details.
 		"""
 		return self._parser.prog
 
 
 	@property
 	def programDescription(self):
-		"""Utility function that makes accessing program description
-		attribute neat and hides implementation details.
+		"""Utility function that makes accessing program description attribute
+		neat and hides implementation details.
 		"""
 		return self._parser.description
 
@@ -229,9 +237,12 @@ class _MainProgram(_Program):
 		'title' parameter is not provided (None) default value is used.
 		"""
 
-		if None == title:
+		if title is not None and type(title) is not str:
+			raise ValueError('Invalid parameter type.')
+			
+		if not title:
 			title = \
-			'The {0} can be called with following commands:'\
+			'The {0} can be called with following commands'\
 			.format(self._parser.prog.strip('.py'))
 
 		self._subParsers = self._parser.add_subparsers(
@@ -267,7 +278,6 @@ class _SubProgram(_Program):
 		subParsersObject=None,
 		name=None,
 		description=None,
-		mail=None,
 		help=None,
 		epilog=None
 	):
@@ -283,8 +293,11 @@ class _SubProgram(_Program):
 
 		if None == name:
 			raise NameError('Missing command name.')
+			
+		if type(name) is not str or not name:
+			raise ValueError('Empty string or not an string object.')
 
-		epilogFmtd = _format_epilog(epilog, mail)
+		epilogFmtd = _format_epilog(epilog, self._app.authorMail)
 
 		self._parser = subParsersObject.add_parser(
 			name,
@@ -301,9 +314,9 @@ class _SubProgram(_Program):
 
 class CommandLineApp(object):
 	"""Actual command line app object containing all relevant application
-	information (NAME, VERSION, DESCRIPTION, ...) and which instantiates
-	action that will be executed depending on the user input from
-	command line.
+	information (NAME, VERSION, DESCRIPTION, ...) and which instantiates through
+	attached program objects action that will be executed depending on the user
+	input from command line.
 	"""
 
 	def __init__(self,
@@ -328,9 +341,11 @@ class CommandLineApp(object):
 
 	@property
 	def programName(self):
-		"""
+		"""Utility function that makes accessing program name attribute neat
+		and hides implementation details.
 		"""
 
+		# If main program is attached get program name from its property.
 		if self.main:
 			return self.main.programName
 		else:
@@ -339,9 +354,11 @@ class CommandLineApp(object):
 
 	@property
 	def programDescription(self):
-		"""
+		"""Utility function that makes accessing program description attribute
+		neat and hides implementation details.
 		"""
 
+		# If main program is attached get program description from its property.
 		if self.main:
 			return self.main.programDescription
 		else:
@@ -350,7 +367,7 @@ class CommandLineApp(object):
 
 	@property
 	def programLicense(self):
-		"""
+		"""Provide access to licence text property.
 		"""
 
 		return self._programLicense
@@ -358,7 +375,7 @@ class CommandLineApp(object):
 
 	@property
 	def versionString(self):
-		"""
+		"""Provide access to program's version string property.
 		"""
 
 		return self._versionString
@@ -366,7 +383,7 @@ class CommandLineApp(object):
 
 	@property
 	def yearString(self):
-		"""
+		"""Provide access to program's year string property.
 		"""
 
 		return self._yearString
@@ -374,7 +391,7 @@ class CommandLineApp(object):
 
 	@property
 	def authorName(self):
-		"""
+		"""Provide access to author's name string.
 		"""
 
 		return self._authorName
@@ -382,51 +399,31 @@ class CommandLineApp(object):
 
 	@property
 	def authorMail(self):
-		"""
+		"""Provide access to author's/bug mail string.
 		"""
 
 		return self._authorMail
 
 
 	def attach_program(self, program, obj):
-		"""
+		"""Attach program/subprogram object to application instance. It attach
+		program object as named attribute to the app object, setting the name of
+		an attribute according to variable 'program'. 'program' variable must be
+		nonempty 'string', or else method will rise ValueError. 'obj' must be
+		instance of _Program subclass, or else ValueError will be risen.
 		"""
 	
 		# Do some basic sanity checks first.
-		if type(program) is not str and not program:
+		if type(program) is not str or not program:
 			raise ValueError('Empty string or not an string object.')
-		if not issubclass(type(obj), _Program):
+		if not issubclass(type(obj), _Program) or type(obj) is _Program:
 			raise ValueError('Invalid object type.')
 
 		setattr(self, program, obj)
 
 
-	def add_argument_group(self, program, title=None, description=None):
-		"""
-		"""
-	
-		obj = getattr(self, program, None)
-		
-		if not obj:
-			raise NameError('Trying to reference nonexistent program.')
-	
-		obj.add_argument_group(title=title, description=description)
-
-	
-	def add_argument(self, program, *args, **kwargs):
-		"""
-		"""
-	
-		obj = getattr(self, program, None)
-		
-		if not obj:
-			raise NameError('Trying to reference nonexistent program.')
-	
-		obj.add_argument(args, kwargs)
-
-
 	def parse_args(self, args=None, namespace=None):
-		"""
+		"""Wrapper for parse_args method of the main program instance.
 		"""
 
 		args = self.main.parse_args(args=None, namespace=None)
@@ -434,7 +431,8 @@ class CommandLineApp(object):
 
 
 	def run(self):
-		"""
+		"""Execute proper application action. This method should be called after
+		a call to parse_args method.
 		"""
 
 		self._action.execute()
@@ -442,6 +440,10 @@ class CommandLineApp(object):
 
 #==============================================================================
 # Program action classes
+#
+# ProgramAction class is the abstract base class for all program action classes
+# an should not be modified. To define new action class subclass from
+# ProgramAction class.
 #==============================================================================
 
 class ProgramAction(object):
@@ -492,23 +494,23 @@ class DefaultAction(ProgramAction):
 
 #==============================================================================
 # Action factories
+#
+# Action factory methods must accept two arguments, 'obj' holding program object
+# to which method is attached and 'args' holding parsed command line arguments.
+# When proper program action object is formulated and instantiated, method
+# returns this object to the caller.
 #==============================================================================
 
-def main_action_factory(obj, args):
+def about_action_factory(obj, args):
 
 	return _formulate_action(
-		DefaultAction,
+		ShowVersionAction,
 		prog=obj._parser.prog,
-		exitf=obj._parser.exit
-	)
-
-
-def login_action_factory(obj, args):
-
-	return _formulate_action(
-		DefaultAction,
-		prog=obj._parser.prog,
-		exitf=obj._parser.exit
+		ver=obj._app.versionString,
+		year=obj._app.yearString,
+		author=obj._app.authorName,
+		license=obj._app.programLicense,
+		exitf=obj._parser.exit,
 	)
 
 
@@ -517,6 +519,8 @@ def login_action_factory(obj, args):
 #==============================================================================
 
 if __name__ == '__main__':
+	
+	# Create an application and feed in relevant application data.
 	app = CommandLineApp(
 		description='Framework for application development \
 			implementing argp option parsing engine.\n\n\
@@ -535,31 +539,38 @@ if __name__ == '__main__':
 		mail='author@mail.com'
 	)
 
-	mainprg = _MainProgram(app=app, epilog=None)
+	# We need at least main program, so let's attach it to our app.
+	app.attach_program('main', _MainProgram(app=app, epilog=None))
 
-	mainprg.add_argument(
+	# We want for main program to show version info.
+	app.main.add_argument(
 		'-V', '--version',
 		action='version',
 		help='print program version',
 		version='%(prog)s i.i'
 	)
+	
+	# If we instantiate subprograms (subparsers) we don't need to attach action
+	# factory to main program, since that code wil never be executed.
 
-	mainprg.add_subparsers()
+	# We want for our app to have subprograms.
+	app.main.add_subparsers()
 
-	loginprg = _SubProgram(
-		app=app,
-		subParsersObject=mainprg.subParsersObject,
-		name='login',
-		description='Command to login user to remote service.',
-		mail='author@mail.com',
-		help='Login user to remote service.',
-		epilog=None
+	# Our only subprogram will show some short application and licence info.
+	app.attach_program('about', _SubProgram(
+			app=app,
+			subParsersObject=app.main.subParsersObject,
+			name='about',
+			description='Command to print application info to standard output.',
+			help='Show application info.',
+			epilog=None
+		)
 	)
 
-	loginprg.attach_action_factory(login_action_factory)
-
-	app.attach_program('main', mainprg)
-	app.attach_program('login', loginprg)
+	app.about.attach_action_factory(about_action_factory)
 	
+	# Now we can parse command line arguments.
 	app.parse_args()
+	
+	# Run generated code.
 	app.run()
